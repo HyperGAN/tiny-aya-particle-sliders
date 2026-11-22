@@ -95,22 +95,30 @@ def _request(tokenizer, row, device):
     return neutral, start
 
 
-def _generate(model, tokenizer, row, probes):
+def _generate(model, tokenizer, row, probes, *, prefill_only=False):
+    if not isinstance(prefill_only, bool):
+        raise TypeError("prefill_only must be a boolean")
     layers = model.model.layers
     device = next(model.parameters()).device
     inputs, start = _request(tokenizer, row, device)
     prefix = inputs.shape[1]
     traces = [[] for _ in layers]
+    calls = [0 for _ in layers]
 
     def edit(index, probe):
         def before(_layer, args):
             hidden = args[0]
-            prefill = not traces[index]
+            prefill = calls[index] == 0
             width = prefix if prefill else 1
             if hidden.shape != (1, width, model.config.hidden_size):
                 raise RuntimeError("Unexpected native question-and-response cache position")
+            calls[index] += 1
+            if prefill_only and not prefill:
+                return args
             active = hidden[:, start:] if prefill else hidden
             steered, coefficient = probe(active, ALPHA)
+            if prefill_only and (coefficient.shape != (1, prefix - start) or coefficient.dtype != torch.float32):
+                raise RuntimeError("Expected one native FP32 coefficient per eligible prefill position")
             traces[index].append(coefficient.flatten())
             edited = torch.cat((hidden[:, :start], steered), dim=1) if prefill else steered
             return (edited, *args[1:])
@@ -125,17 +133,20 @@ def _generate(model, tokenizer, row, probes):
             pad_token_id=tokenizer.pad_token_id, eos_token_id=model.generation_config.eos_token_id,
         )[0, prefix:]
         ids = result.tolist()
-        eligible = prefix - start + len(ids) - 1 if ids else 0
-        if not ids or any(len(values) != len(ids) for values in traces):
+        if not 0 < len(ids) <= protocol.MAX_NEW_TOKENS or calls != [len(ids)] * len(layers):
             raise RuntimeError("Tiny Aya did not generate one native decoder call per output token")
+        eligible = prefix - start if prefill_only else prefix - start + len(ids) - 1
         coefficients = torch.stack([torch.cat(values) for values in traces]).cpu()
         if coefficients.shape != (len(layers), eligible) or not torch.isfinite(coefficients).all():
             raise RuntimeError("Unexpected question-and-response A-PSR coefficient trace")
-    return dict(output=tokenizer.decode(ids, skip_special_tokens=True), output_ids=ids,
-                input_tokens=prefix, generated_tokens=len(ids), prefill_start=start,
-                aligned_prefill_positions=prefix - start, eligible_positions=eligible,
-                coefficients=coefficients.tolist(), alpha=ALPHA, weights="raw", ema_decay=None,
-                base_revision=protocol.REVISION, raw_probe_sha256=RAW_PROBE_SHA256)
+    trace = dict(output=tokenizer.decode(ids, skip_special_tokens=True), output_ids=ids,
+                 input_tokens=prefix, generated_tokens=len(ids), prefill_start=start,
+                 aligned_prefill_positions=prefix - start, eligible_positions=eligible,
+                 coefficients=coefficients.tolist(), alpha=ALPHA, weights="raw", ema_decay=None,
+                 base_revision=protocol.REVISION, raw_probe_sha256=RAW_PROBE_SHA256)
+    if prefill_only:
+        trace["prefill_only"] = True
+    return trace
 
 
 class QuestionResponseAPSR:
@@ -181,7 +192,8 @@ class QuestionResponseAPSR:
         self._probes.load_state_dict(fitted, strict=True)
         self._lock = RLock()
 
-    def generate(self, context, question, *, options=None):
+    def generate(self, context, question, *, options=None, prefill_only=False):
+        """Use the fitted probes on the shared suffix, and on cached steps by default."""
         with self._lock:
             return _generate(self._model, self._tokenizer, dict(context=context, question=question, options=options),
-                             self._probes)
+                             self._probes, prefill_only=prefill_only)
