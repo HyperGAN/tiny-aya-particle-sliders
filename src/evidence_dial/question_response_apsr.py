@@ -13,6 +13,9 @@ from . import protocol
 
 
 RAW_PROBE_SHA256 = "2d352c55b9c770d89c58c08b2b46f453717e3fe8c98cdcf353caa65f8fd02bca"
+LL_RAW_PROBE_SHA256 = "0cf389d5952a4fa373b912b08649ac4557393214524ebc953c5b3af8d55a9e38"
+LL_RAW_PLAN_SHA256 = "4ff20a68cb0283bd10f22c2dc819d9c28f88995b67637a2901424e4cd8a1bc7a"
+LL_RAW_CAPTURE_SHA256 = "b4b8414ba4faa5cc690b5d8ba00a30a8ef2bc901d14d9fb50dd9722f2e30c185"
 NATIVE_IDENTITY_SHA256 = "8cefba4ad05ab68e98b768df34c77e0831f93644ac53bd93bca9ebd7732ad61a"
 PROTOCOL_SHA256 = "30785c733ee1177cf30282fbd6929c6b1f3d83aacfebee06a7c665ccbb3df59a"
 SHARED_PSR_SHA256 = "67ee03066e255fe105735820b0edba53757d943b93239b1279de707d23dbae59"
@@ -54,11 +57,28 @@ def _check_loader_inputs(snapshot):
 
 
 def _load_raw(path):
-    _check_file(path, RAW_PROBE_SHA256)
-    packet = torch.load(path, map_location="cpu", weights_only=True)
-    if (packet["type"], packet["weights"], packet["ema_decay"], packet["completed"], packet["base"]["sha256"]) != (
-            "tiny-aya-a-psr-question-and-response", "raw", None, 630, NATIVE_IDENTITY_SHA256):
-        raise ValueError("Expected the measured question-and-response RAW probe fit")
+    with Path(path).open("rb") as stream:
+        digest = file_digest(stream, "sha256").hexdigest()
+        if digest not in (RAW_PROBE_SHA256, LL_RAW_PROBE_SHA256):
+            raise ValueError(f"Question-and-response A-PSR source changed: {path}")
+        stream.seek(0)
+        packet = torch.load(stream, map_location="cpu", weights_only=True)
+
+    is_ll = digest == LL_RAW_PROBE_SHA256
+    metadata = ("tiny-aya-a-psr-question-and-response-loglikelihood", 210) if is_ll else (
+        "tiny-aya-a-psr-question-and-response", 630,
+    )
+    base = packet.get("base")
+    if ((packet.get("type"), packet.get("completed")) != metadata or packet.get("weights") != "raw"
+            or "ema_decay" not in packet or packet["ema_decay"] is not None
+            or not isinstance(base, dict) or base.get("sha256") != NATIVE_IDENTITY_SHA256):
+        raise ValueError("Expected the exact question-and-response RAW probe fit")
+    if is_ll:
+        plan, cohort = packet.get("plan"), packet.get("cohort")
+        if (packet.get("objective") != "response_negative_log_likelihood_with_position_penalty"
+                or not isinstance(plan, dict) or plan.get("sha256") != LL_RAW_PLAN_SHA256
+                or not isinstance(cohort, dict) or cohort.get("sha256") != LL_RAW_CAPTURE_SHA256):
+            raise ValueError("Unexpected provenance for the converged LL RAW probe fit")
     probes = packet["probes"]
     expected = {
         f"{layer}.{name}": shape for layer in range(LAYERS)
@@ -66,10 +86,10 @@ def _load_raw(path):
     }
     if set(probes) != set(expected) or any(
         not isinstance(tensor, torch.Tensor) or tensor.shape != expected[name] or tensor.dtype != torch.float32
-        or not torch.isfinite(tensor).all() for name, tensor in probes.items()
+        or tensor.device.type != "cpu" or not torch.isfinite(tensor).all() for name, tensor in probes.items()
     ):
-        raise ValueError("The measured RAW fit must contain 36 distinct finite FP32 probe states")
-    return probes
+        raise ValueError("The pinned RAW fit must contain 36 distinct finite FP32 probe states")
+    return probes, digest
 
 
 def _request(tokenizer, row, device):
@@ -95,7 +115,7 @@ def _request(tokenizer, row, device):
     return neutral, start
 
 
-def _generate(model, tokenizer, row, probes, *, prefill_only=False):
+def _generate(model, tokenizer, row, probes, *, prefill_only=False, raw_probe_sha256=RAW_PROBE_SHA256):
     if not isinstance(prefill_only, bool):
         raise TypeError("prefill_only must be a boolean")
     layers = model.model.layers
@@ -143,7 +163,7 @@ def _generate(model, tokenizer, row, probes, *, prefill_only=False):
                  input_tokens=prefix, generated_tokens=len(ids), prefill_start=start,
                  aligned_prefill_positions=prefix - start, eligible_positions=eligible,
                  coefficients=coefficients.tolist(), alpha=ALPHA, weights="raw", ema_decay=None,
-                 base_revision=protocol.REVISION, raw_probe_sha256=RAW_PROBE_SHA256)
+                 base_revision=protocol.REVISION, raw_probe_sha256=raw_probe_sha256)
     if prefill_only:
         trace["prefill_only"] = True
     return trace
@@ -159,7 +179,7 @@ class QuestionResponseAPSR:
             raise ValueError("Use the measured Torch, Transformers and Accelerate runtime")
         _check_file(protocol.__file__, PROTOCOL_SHA256)
         _check_file(prompt_steering.__file__, SHARED_PSR_SHA256)
-        fitted = _load_raw(raw_probe)
+        fitted, self._raw_probe_sha256 = _load_raw(raw_probe)
         snapshot = Path(snapshot)
         _check_loader_inputs(snapshot)
         for name, expected in BASE_FILES.items():
@@ -196,4 +216,4 @@ class QuestionResponseAPSR:
         """Use the fitted probes on the shared suffix, and on cached steps by default."""
         with self._lock:
             return _generate(self._model, self._tokenizer, dict(context=context, question=question, options=options),
-                             self._probes, prefill_only=prefill_only)
+                             self._probes, prefill_only=prefill_only, raw_probe_sha256=self._raw_probe_sha256)
