@@ -154,9 +154,31 @@ packet digest, fit provenance, and explicit RAW and EMA metadata.
 
 Call `generate` with its default full-runtime scope to apply the fitted
 probes through native decoding. The returned `raw_probe_sha256` identifies
-the checkpoint used for the trace. The held-out study uses a separate
-three-arm runner for OFF, full-runtime A-PSR, and the matched-dose prefill
-control.
+the checkpoint used for the trace.
+
+On the frozen R160–R191 panel, all 768 cases across 32 balanced families
+passed independent integrity checks in all three arms.
+
+| Native held-out arm | Strict Grounding success |
+| --- | ---: |
+| OFF | 311/768 |
+| Same-dose prefill constant | 345/768 |
+| Full-runtime log-likelihood A-PSR | 440/768 |
+
+At strength 1, A-PSR gained 16.80 percentage points over OFF and 12.37
+over the same-dose prefill constant. The independent observer passed all
+2,304 arm outputs across 338 distinct reply texts. The study used the
+original BF16 base, shared FP32 probes, native greedy decoding with cache
+and EOS, and the 64-token cap.
+
+The three-arm runner recorded the realized A-PSR coefficients for each
+case and layer. The control distributes that sum uniformly over the
+guaranteed aligned prefill positions using the nearest-even FP32
+coefficient. Its cached steps receive zero. Use the same request and
+prefill alignment, the frozen strict Grounding scorer, and the independent
+integrity contract to reproduce the matched comparison. The opt-in
+`QuestionResponseAPSR` entry point with the original `RAW-00210.pt`
+replays the adaptive arm. [Aggregate outcomes and replay digests](../artifacts/evidence/tiny-aya-ll-frontloaded-dose-heldout.json)
 
 ### Fresh fixed-prefill comparison
 

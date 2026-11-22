@@ -1,0 +1,162 @@
+{
+  "study": "Tiny Aya question-and-response log-likelihood A-PSR on held-out Grounding",
+  "scope": {
+    "balanced_family_range": [
+      "R160",
+      "R191"
+    ],
+    "families": 32,
+    "frozen_cases": 768,
+    "metric": "Strict Grounding success from the exact protocol; equal weight per held-out case",
+    "arm_order": [
+      "off",
+      "apsr",
+      "frontloaded_constant"
+    ],
+    "uses_raw_weights": true,
+    "ema_decay": null
+  },
+  "fit": {
+    "checkpoint": "RAW-00210.pt",
+    "optimizer_updates": 210,
+    "planned_update_ceiling": 294,
+    "completed_epochs": 5,
+    "cases_per_epoch": 42,
+    "convergence_threshold": 0.001,
+    "objective": "response_negative_log_likelihood_with_position_penalty",
+    "alpha": 1,
+    "decoder_input_layers": 36
+  },
+  "native": {
+    "base": "CohereLabs/tiny-aya-global",
+    "base_revision": "af89d219b53ed9b13b8a4645f9c8028973510324",
+    "base_dtype": "bfloat16",
+    "attention": "sdpa",
+    "coefficient_dtype": "float32",
+    "do_sample": false,
+    "use_cache": true,
+    "eos_token_id": 3,
+    "pad_token_id": 0,
+    "max_new_tokens": 64,
+    "adaptive_scope": "Shared question-and-evidence prefill suffix, then every cached answer prediction through native stop",
+    "frontloaded_control": "Per-layer realized adaptive coefficient sum in exact binary32 units divided by aligned prefill width, rounded to nearest-even binary32; cached steps receive zero",
+    "maximum_relative_per_layer_dose_rounding_error": 5.911857652029045e-08,
+    "terminations": {
+      "off": {
+        "native_eos": 768
+      },
+      "apsr": {
+        "native_eos": 768
+      },
+      "frontloaded_constant": {
+        "native_eos": 768
+      }
+    }
+  },
+  "independent_integrity": {
+    "qualified_cases": 768,
+    "passed_arm_outputs": 2304,
+    "distinct_passed_texts": 338,
+    "fresh_observations": 291,
+    "reused_exact_text_observations": 47,
+    "observer_replays": 0
+  },
+  "strict_success_counts": {
+    "off": 311,
+    "apsr": 440,
+    "frontloaded_constant": 345
+  },
+  "paired_differences": {
+    "apsr_minus_off": {
+      "wins": 166,
+      "ties": 565,
+      "losses": 37,
+      "mean": 0.16796875
+    },
+    "frontloaded_constant_minus_off": {
+      "wins": 81,
+      "ties": 640,
+      "losses": 47,
+      "mean": 0.044270833333333336
+    },
+    "apsr_minus_frontloaded_constant": {
+      "wins": 104,
+      "ties": 655,
+      "losses": 9,
+      "mean": 0.12369791666666667
+    }
+  },
+  "joint_strict_outcome_counts": [
+    {
+      "off": 0,
+      "apsr": 0,
+      "frontloaded_constant": 0,
+      "cases": 286
+    },
+    {
+      "off": 0,
+      "apsr": 0,
+      "frontloaded_constant": 1,
+      "cases": 5
+    },
+    {
+      "off": 0,
+      "apsr": 1,
+      "frontloaded_constant": 0,
+      "cases": 90
+    },
+    {
+      "off": 0,
+      "apsr": 1,
+      "frontloaded_constant": 1,
+      "cases": 76
+    },
+    {
+      "off": 1,
+      "apsr": 0,
+      "frontloaded_constant": 0,
+      "cases": 33
+    },
+    {
+      "off": 1,
+      "apsr": 0,
+      "frontloaded_constant": 1,
+      "cases": 4
+    },
+    {
+      "off": 1,
+      "apsr": 1,
+      "frontloaded_constant": 0,
+      "cases": 14
+    },
+    {
+      "off": 1,
+      "apsr": 1,
+      "frontloaded_constant": 1,
+      "cases": 260
+    }
+  ],
+  "sha256": {
+    "raw_probe": "0cf389d5952a4fa373b912b08649ac4557393214524ebc953c5b3af8d55a9e38",
+    "native_identity": "8cefba4ad05ab68e98b768df34c77e0831f93644ac53bd93bca9ebd7732ad61a",
+    "preregistered_panel": "2820965d485f277be24683494b93a8df0ea9ac2b458ebaab1eab0d5fb5bbfac4",
+    "holdout": "38a3c2d92fd61f3ab25290e79e7a79678bd9cadb21cf5abc753003adf6facb61",
+    "native_input_horizons": "32440db64f675566f5a7e7843dc1b7d91e5e59f935fbab272ab6ca8fbe773ce0",
+    "holdout_disjointness_audit": "5c7f4ae8d5a1af3c49a49baabab8bc59d48104afc4aae80b7a63e41e24c6b400",
+    "strict_grounding_source": "30785c733ee1177cf30282fbd6929c6b1f3d83aacfebee06a7c665ccbb3df59a",
+    "shared_prompt_steering_source": "67ee03066e255fe105735820b0edba53757d943b93239b1279de707d23dbae59",
+    "same_dose_arithmetic_source": "f6ad5d5d4c854b67fbe6ad03a6e03650e63d4dbe60eb41276667162c4062b306",
+    "native_prefill_control_source": "a63417afe73e19d971893e35b63ea32b24a6d70396d52818dc348d93239a33e8",
+    "native_render_result": "68e7fa2f13c44cfb17188f78cc9a3888ea520ccfc6f43eee3a487bf65fa38e2b",
+    "fit_convergence_terminal": "763bc6a1382481557126303df5efaa482ad35430c629bdd324f4328bb45386bf",
+    "qualified_observer_contract": "618fb110ec612890a65c1524f6b619219132aea1512ec5457978102f0fe179cb",
+    "independently_recomputed_result": "4d634066742119cdebcff228b4d984fb8169ab28c0f1722b07e24774ddb696ed",
+    "verified_observer_closure": "a7140e520d5e124cbbe751bbfba232932c87edb1a5797d7870b95d0d729db372"
+  },
+  "replay": {
+    "adaptive_entry_point": "evidence_dial.question_response_apsr.QuestionResponseAPSR",
+    "source_revision": "e926109da7fdb08e37e2dbabac8bc30522c68494",
+    "entry_point_requires": "Pinned native runtime, local base snapshot, and the original checkpoint supplied separately",
+    "comparison_requires": "Same registered requests and horizons, strict scorer, coefficient traces and independent integrity"
+  }
+}
