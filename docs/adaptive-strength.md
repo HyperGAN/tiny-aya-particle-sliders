@@ -124,3 +124,22 @@ of 2.62 percentage points on these pairs. Two cases lack saved OFF integrity
 verdicts. Exhaustive testing of 64 eligible lengths per case found no
 self-consistent constant on three cases. The full 768-case effect remains
 unmeasured. [Per-case results and source digests](../artifacts/evidence/tiny-aya-question-response-native-dose.json)
+
+The measured profile can be applied explicitly to a local copy of the pinned
+base snapshot and the study's original `RAW-00630.pt` probe packet. The class
+verifies their digests and the measured runtime. It opens the original BF16
+base with SDPA and applies the fitted FP32 probes at all 36 decoder inputs.
+It measures the shared question-and-evidence token suffix before generating
+from the neutral prompt. The output includes the exact prefill boundary and
+layer-major coefficient trace through native EOS or the measured 64-token cap.
+
+```python
+from evidence_dial.question_response_apsr import QuestionResponseAPSR
+
+profile = QuestionResponseAPSR(base_snapshot_directory, original_raw_probe_path)
+output = profile.generate(context, question, options=options)
+```
+
+Use the pinned runtime in a fresh process with one visible CUDA device. The
+probe packet is supplied separately. The equal-dose constant in the study
+remains a per-case, per-layer comparison with the realized native token count.
