@@ -144,6 +144,20 @@ Use the pinned runtime in a fresh process with one visible CUDA device. The
 probe packet is supplied separately. The equal-dose constant in the study
 remains a per-case, per-layer comparison with the realized native token count.
 
+### Log-likelihood RAW probe fit
+
+The same opt-in class accepts the original `RAW-00210.pt` from the
+question-and-response log-likelihood fit. The fit used the authors’
+0.001 convergence threshold and stopped after five epochs. Supply the
+original packet and the same pinned base snapshot. The loader checks the
+packet digest, fit provenance, and explicit RAW and EMA metadata.
+
+Call `generate` with its default full-runtime scope to apply the fitted
+probes through native decoding. The returned `raw_probe_sha256` identifies
+the checkpoint used for the trace. The held-out study uses a separate
+three-arm runner for OFF, full-runtime A-PSR, and the matched-dose prefill
+control.
+
 ### Fresh fixed-prefill comparison
 
 A separate 768-case panel used the same fit on a fixed native prefill suffix.

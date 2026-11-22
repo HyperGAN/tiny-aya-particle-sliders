@@ -1,4 +1,5 @@
 from contextlib import ExitStack
+from hashlib import sha256
 from threading import RLock
 
 import pytest
@@ -109,6 +110,7 @@ def test_prefill_only_scope_matches_native_prefill_with_unedited_cached_inputs(n
     engine = profile.QuestionResponseAPSR.__new__(profile.QuestionResponseAPSR)
     engine._model, engine._tokenizer, engine._probes = native
     engine._lock = RLock()
+    engine._raw_probe_sha256 = profile.RAW_PROBE_SHA256
     with ExitStack() as handles:
         for probe in probes:
             def prefill_only(_probe, args):
@@ -122,7 +124,19 @@ def test_prefill_only_scope_matches_native_prefill_with_unedited_cached_inputs(n
     assert result["eligible_positions"] == result["aligned_prefill_positions"] == 3
     assert result["coefficients"] == coefficients
     assert result["weights"] == "raw" and result["ema_decay"] is None
+    assert result["raw_probe_sha256"] == profile.RAW_PROBE_SHA256
     assert not any(layer._forward_pre_hooks for layer in model.model.layers)
+
+
+def test_ll_trace_reports_its_loaded_raw_identity(native):
+    model, tokenizer, probes = native
+    engine = profile.QuestionResponseAPSR.__new__(profile.QuestionResponseAPSR)
+    engine._model, engine._tokenizer, engine._probes = native
+    engine._lock = RLock()
+    engine._raw_probe_sha256 = profile.LL_RAW_PROBE_SHA256
+    trace = engine.generate(**ROW)
+    assert trace["raw_probe_sha256"] == profile.LL_RAW_PROBE_SHA256
+    assert trace["eligible_positions"] == trace["aligned_prefill_positions"] + trace["generated_tokens"] - 1
 
 
 def test_question_response_hooks_release_after_failure(native):
@@ -142,6 +156,59 @@ def test_question_response_rejects_another_raw_fit(tmp_path):
     dummy.write_bytes(b"not the measured probe")
     with pytest.raises(ValueError, match="source changed"):
         profile._load_raw(dummy)
+
+
+def _packet(ll):
+    probes = {f"0.{name}": torch.zeros(shape) for name, shape in (
+        ("probe.weight", (1, 2)), ("probe.bias", (1,)), ("direction.weight", (1, 2)),
+    )}
+    packet = dict(type="tiny-aya-a-psr-question-and-response", completed=630, weights="raw", ema_decay=None,
+                  base={"sha256": profile.NATIVE_IDENTITY_SHA256}, probes=probes)
+    if ll:
+        packet.update(
+            type="tiny-aya-a-psr-question-and-response-loglikelihood", completed=210,
+            objective="response_negative_log_likelihood_with_position_penalty",
+            plan={"sha256": profile.LL_RAW_PLAN_SHA256}, cohort={"sha256": profile.LL_RAW_CAPTURE_SHA256},
+        )
+    return packet
+
+
+def _pin_fixture(tmp_path, monkeypatch, packet, ll):
+    path = tmp_path / "fixture.pt"
+    torch.save(packet, path)
+    digest = sha256(path.read_bytes()).hexdigest()
+    monkeypatch.setattr(profile, "LL_RAW_PROBE_SHA256" if ll else "RAW_PROBE_SHA256", digest)
+    monkeypatch.setattr(profile, "LAYERS", 1)
+    monkeypatch.setattr(profile, "WIDTH", 2)
+    return path, digest
+
+
+@pytest.mark.parametrize("ll", [False, True])
+def test_loads_only_the_pinned_raw_cohorts(tmp_path, monkeypatch, ll):
+    packet = _packet(ll)
+    path, digest = _pin_fixture(tmp_path, monkeypatch, packet, ll)
+    probes, detected = profile._load_raw(path)
+    assert detected == digest
+    assert set(probes) == set(packet["probes"])
+    assert all(torch.equal(value, probes[name]) for name, value in packet["probes"].items())
+
+
+@pytest.mark.parametrize("changes", [
+    {"completed": 147}, {"weights": "ema"}, {"ema_decay": 0.9}, {"plan": None},
+    {"cohort": {"sha256": "wrong"}}, {"objective": "mse"}, {"base": {"sha256": "wrong"}},
+])
+def test_rejects_wrong_ll_provenance_even_for_fixture_digest(tmp_path, monkeypatch, changes):
+    path, _ = _pin_fixture(tmp_path, monkeypatch, dict(_packet(True), **changes), True)
+    with pytest.raises(ValueError, match="RAW probe fit"):
+        profile._load_raw(path)
+
+
+def test_rejects_ll_checkpoint_missing_explicit_no_ema(tmp_path, monkeypatch):
+    packet = _packet(True)
+    del packet["ema_decay"]
+    path, _ = _pin_fixture(tmp_path, monkeypatch, packet, True)
+    with pytest.raises(ValueError, match="RAW probe fit"):
+        profile._load_raw(path)
 
 
 @pytest.mark.parametrize("extra", [
