@@ -143,3 +143,16 @@ output = profile.generate(context, question, options=options)
 Use the pinned runtime in a fresh process with one visible CUDA device. The
 probe packet is supplied separately. The equal-dose constant in the study
 remains a per-case, per-layer comparison with the realized native token count.
+
+### Fresh fixed-prefill comparison
+
+A separate 768-case panel used the same fit on a fixed native prefill suffix.
+The uniform comparator used the nearest representable FP32 mean of the
+measured coefficients at each layer. The later cached decoding steps ran
+unedited in every arm.
+
+Native generation finished for all 768 cases. The independent integrity
+observer qualified 754 complete triples and stopped after the matched
+constant produced the repetitive reply `1111` on one case. Thirty-two
+output roles remain unmeasured. The full-panel effect remains unmeasured.
+[Integrity disposition and evidence digests](../artifacts/evidence/tiny-aya-fixed-prefill-integrity-stop.json)

@@ -1,0 +1,30 @@
+{
+  "schema": "tiny-aya-fixed-prefill-integrity-stop-v1",
+  "weights": "raw",
+  "ema_decay": null,
+  "fit": "question-and-response",
+  "prefill": {
+    "decode_tail": "native unedited cached calls",
+    "matched_constant": "nearest representable FP32 mean of the realized native coefficients for each layer"
+  },
+  "heldout_cases": 768,
+  "heldout_families": 32,
+  "qualified_complete_cases": 754,
+  "output_integrity_counts": {
+    "pass": 2271,
+    "fail": 1,
+    "unmeasured": 32
+  },
+  "new_observer_calls": 185,
+  "reused_exact_observations": 54,
+  "stop": {
+    "case": "balanced-R089-missing-docs3-forward",
+    "arm": "fixed",
+    "failure": "repeated digit response",
+    "content_sha256": "0ffe1abd1a08215353c233d6e009613e95eec4253832a761af28ff37ac5a150c"
+  },
+  "qualified_full_panel_mean": null,
+  "verified_study_sha256": "53990e0345474f5021cae3a012e82e4cec61b4070f366447306aa40200aa6532",
+  "verified_stop_sha256": "9b267330fe029dd9fff768d7f44d139860265a84b340bdb8a5aa2ac8de107e37",
+  "original_independent_instrument_sha256": "618fb110ec612890a65c1524f6b619219132aea1512ec5457978102f0fe179cb"
+}
