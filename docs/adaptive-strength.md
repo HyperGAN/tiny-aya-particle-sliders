@@ -151,8 +151,21 @@ The uniform comparator used the nearest representable FP32 mean of the
 measured coefficients at each layer. The later cached decoding steps ran
 unedited in every arm.
 
+To replay the adaptive arm, pass `prefill_only=True`. The fitted probes
+apply at the shared question-and-evidence suffix, including the position
+that predicts the first answer token. Subsequent native cached decoding
+uses that prefill cache through EOS or the 64-token cap. The result marks
+`prefill_only` and records one FP32 coefficient per eligible position and
+decoder layer. The aligned prompt determines the eligible count before
+generation.
+
+```python
+output = profile.generate(context, question, options=options, prefill_only=True)
+```
+
 Native generation finished for all 768 cases. The independent integrity
 observer qualified 754 complete triples and stopped after the matched
 constant produced the repetitive reply `1111` on one case. Thirty-two
 output roles remain unmeasured. The full-panel effect remains unmeasured.
+The prefill-only option is available for controlled research comparisons.
 [Integrity disposition and evidence digests](../artifacts/evidence/tiny-aya-fixed-prefill-integrity-stop.json)

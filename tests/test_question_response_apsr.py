@@ -1,4 +1,5 @@
 from contextlib import ExitStack
+from threading import RLock
 
 import pytest
 import torch
@@ -74,9 +75,53 @@ def test_exact_question_response_scope_matches_archived_hook(native):
     assert result["output_ids"] == original
     assert result["prefill_start"] == start and result["aligned_prefill_positions"] == 3
     assert result["eligible_positions"] == 3 + len(original) - 1
+    assert "prefill_only" not in result
     assert result["coefficients"] == [torch.cat(layer).tolist() for layer in traces]
     assert result["weights"] == "raw" and result["ema_decay"] is None
     assert {(name, id(value), value._version) for name, value in model.named_parameters()} == state
+    assert not any(layer._forward_pre_hooks for layer in model.model.layers)
+
+
+def test_prefill_only_scope_matches_native_prefill_with_unedited_cached_inputs(native):
+    model, tokenizer, probes = native
+    inputs = torch.tensor([[1, 7, 4, 5, 6]])
+    start = 2
+    coefficients = []
+
+    def register_prefill(layer, probe):
+        def edit(_layer, args):
+            handle.remove()
+            hidden = args[0]
+            steered, coefficient = probe(hidden[:, start:], 1)
+            coefficients.append(coefficient.flatten().tolist())
+            return (torch.cat((hidden[:, :start], steered), dim=1), *args[1:])
+
+        handle = layer.register_forward_pre_hook(edit)
+        return handle
+
+    with torch.inference_mode(), ExitStack() as handles:
+        for layer, probe in zip(model.model.layers, probes, strict=True):
+            handles.callback(register_prefill(layer, probe).remove)
+        expected = model.generate(input_ids=inputs, do_sample=False, use_cache=True, max_new_tokens=4,
+                                  pad_token_id=tokenizer.pad_token_id,
+                                  eos_token_id=model.generation_config.eos_token_id)[0, inputs.shape[1]:].tolist()
+
+    engine = profile.QuestionResponseAPSR.__new__(profile.QuestionResponseAPSR)
+    engine._model, engine._tokenizer, engine._probes = native
+    engine._lock = RLock()
+    with ExitStack() as handles:
+        for probe in probes:
+            def prefill_only(_probe, args):
+                assert args[0].shape == (1, 3, model.config.hidden_size)
+
+            handles.callback(probe.register_forward_pre_hook(prefill_only).remove)
+        result = engine.generate(**ROW, prefill_only=True)
+    assert len(expected) > 1
+    assert result["output_ids"] == expected
+    assert result["prefill_only"] is True
+    assert result["eligible_positions"] == result["aligned_prefill_positions"] == 3
+    assert result["coefficients"] == coefficients
+    assert result["weights"] == "raw" and result["ema_decay"] is None
     assert not any(layer._forward_pre_hooks for layer in model.model.layers)
 
 
