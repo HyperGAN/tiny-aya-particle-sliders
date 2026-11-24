@@ -41,6 +41,14 @@
     "adaptive_scope": "Shared question-and-evidence prefill suffix, then every cached answer prediction through native stop",
     "frontloaded_control": "Per-layer realized adaptive coefficient sum in exact binary32 units divided by aligned prefill width, rounded to nearest-even binary32; cached steps receive zero",
     "maximum_relative_per_layer_dose_rounding_error": 5.911857652029045e-08,
+    "independent_coefficient_audit": {
+      "checked_layer_case_pairs": 27648,
+      "exact_applied_dose": 78,
+      "rounded_to_closest": 27570,
+      "midpoint_ties_rounded_to_even": 37,
+      "maximum_relative_absolute_dose_error_fraction": "171/2892491837",
+      "receipt_sha256": "1c2780a42fc38a6966647cf9c6065f28e2bc38f42bc72304582f6a8be868b5ea"
+    },
     "terminations": {
       "off": {
         "native_eos": 768

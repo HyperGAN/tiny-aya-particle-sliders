@@ -180,6 +180,13 @@ integrity contract to reproduce the matched comparison. The opt-in
 `QuestionResponseAPSR` entry point with the original `RAW-00210.pt`
 replays the adaptive arm. [Aggregate outcomes and replay digests](../artifacts/evidence/tiny-aya-ll-frontloaded-dose-heldout.json)
 
+An independent audit recomputed the integrated coefficient from each original
+adaptive trace and checked the observed constant against its adjacent FP32
+values. All 27,648 layer and case pairs used the nearest-even value. The dose
+matched exactly in 78 pairs, and all 37 midpoint ties rounded to even.
+The largest relative absolute dose error was 5.9119 × 10⁻⁸.
+[Coefficient audit and receipt digest](../artifacts/evidence/tiny-aya-ll-frontloaded-dose-heldout.json)
+
 ### Fresh fixed-prefill comparison
 
 A separate 768-case panel used the same fit on a fixed native prefill suffix.
