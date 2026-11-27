@@ -35,3 +35,5 @@ publication/training-archive/*.tar.gz
 # Materialized immutable selection evidence.
 /artifacts/selection-v1.json
 /artifacts/method-repair-v1/selection-v1.json
+.venv-text/
+/vibe/build/
