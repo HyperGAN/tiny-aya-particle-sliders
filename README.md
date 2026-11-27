@@ -13,7 +13,9 @@ python3.12 -m venv .venv-text
 .venv-text/bin/tiny-aya-vibe --snapshot "$MODEL_SNAPSHOT" --adapter ./rhyming/slider.safetensors --prompt "Welcome a friend to a library."
 ```
 
-Omit `--adapter` to generate with the base model. The run directory contains the teacher verdicts, RAW checkpoints, strength comparisons, and held-out replies. [Shared training implementation](https://github.com/HyperGAN/particle-sliders/tree/210a63603cd450b0679198343d7777fc88fb0dc4/packages/particle-sliders-vibe#train-and-sample-a-text-vibe).
+Omit `--adapter` to generate with the base model. The run directory contains the teacher verdicts, RAW checkpoints, strength comparisons, and held-out replies. [Shared training implementation](https://github.com/HyperGAN/particle-sliders/tree/0268a29166e228b40b353c3bd8284c9ae1e658dd/packages/particle-sliders-vibe#train-and-sample-a-text-vibe).
+
+In a rhyme qualification on four held-out prompts, strength 1.5 with the early-token schedule raised mean rhyme score by 0.593 on a 0–1 scale.
 
 ## Prior studies and releases
 
