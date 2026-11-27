@@ -1,5 +1,22 @@
 # Particle Sliders for Tiny Aya
 
+## Train a text vibe with ParticleGAN 0.12.0
+
+Describe the style in one phrase to train a slider for Tiny Aya Global. The native CUDA worker uses Anima's rank-eight routed attention branches, 128 × 4 particle bank, and stock ParticleGAN 0.12.0 EMPF update on frozen text responses. The default run qualifies at least 16 teaching contexts, trains for 448 updates, and calibrates strength on finished replies. The exported slider includes its selected token-strength schedule.
+
+From this checkout, install the text runtime in its own environment. Set `CUDA_VISIBLE_DEVICES` to one GPU UUID, `NANOGPT_API_KEY` for the Jev reader during training, and `MODEL_SNAPSHOT` to the local snapshot directory ending in `af89d219b53ed9b13b8a4645f9c8028973510324`.
+
+```sh
+python3.12 -m venv .venv-text
+.venv-text/bin/pip install ./vibe
+.venv-text/bin/tiny-aya-vibe --snapshot "$MODEL_SNAPSHOT" --vibe "short, playful rhymes" --out ./rhyming
+.venv-text/bin/tiny-aya-vibe --snapshot "$MODEL_SNAPSHOT" --adapter ./rhyming/slider.safetensors --prompt "Welcome a friend to a library."
+```
+
+Omit `--adapter` to generate with the base model. The run directory contains the teacher verdicts, RAW checkpoints, strength comparisons, and held-out replies. [Shared training implementation](https://github.com/HyperGAN/particle-sliders/tree/e50158f3c4f14cc1245271dbe4fb1011b695688d/packages/particle-sliders-vibe#train-and-sample-a-text-vibe).
+
+## Prior studies and releases
+
 https://github.com/user-attachments/assets/9a2a0522-639f-448f-ad55-507450de44c1
 
 *The entry video (1:41, 720p web encode). Full-quality master: [GitHub release](https://github.com/HyperGAN/tiny-aya-particle-sliders/releases/tag/lexsi-video-v7) · [Hugging Face](https://huggingface.co/ntc-ai/tiny-aya-particle-sliders/blob/main/video/particle-sliders-video-v7.mp4)*
